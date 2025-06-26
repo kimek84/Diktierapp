@@ -1,578 +1,424 @@
 <!DOCTYPE html>
-
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whisper + Claude Diktier-App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>🎤 Diktier-App - Debug Version</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .debug-info { background: #f0f8ff; border: 2px solid #0066cc; padding: 10px; margin: 10px 0; border-radius: 8px; font-size: 12px; }
+        .error-msg { background: #ffebee; border: 2px solid #f44336; color: #c62828; }
+        .success-msg { background: #e8f5e8; border: 2px solid #4caf50; color: #2e7d32; }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <div id="app" class="min-h-screen">
-        <div class="p-4">
-            <div class="max-w-4xl mx-auto">
-                <!-- Header -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-                        🤖 Whisper + Claude Diktier-App
-                    </h1>
-                    <p class="text-gray-600 mb-4">
-                        Professionelle medizinische Spracherkennung mit KI-Nachbearbeitung
-                    </p>
+<body class="bg-gray-50 min-h-screen">
+    
+    <!-- Debug Panel -->
+    <div class="debug-info">
+        <h3>🔍 Debug-Info:</h3>
+        <div id="debugInfo">Browser wird geprüft...</div>
+    </div>
 
-```
-                <!-- API Configuration -->
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">⚙️ API-Konfiguration</h3>
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                OpenAI API Key (Whisper)
-                            </label>
-                            <input type="password" id="openaiKey" placeholder="sk-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm" onchange="saveKeys()">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Anthropic API Key (Claude)
-                            </label>
-                            <input type="password" id="anthropicKey" placeholder="sk-ant-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm" onchange="saveKeys()">
-                        </div>
-                    </div>
-                    <div class="mt-3 flex gap-2">
-                        <button onclick="saveKeys()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                            💾 API-Keys speichern
-                        </button>
-                        <button onclick="testKeys()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">
-                            🧪 Keys testen
-                        </button>
-                        <span id="keyStatus" class="flex items-center text-sm"></span>
-                    </div>
-                    <div class="text-xs text-gray-600 mt-2">
-                        <p><strong>Kosten:</strong> ~$0.01 pro Bericht | <strong>Sicherheit:</strong> Keys werden nur lokal gespeichert</p>
-                        <p><strong>APIs:</strong> <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-600">OpenAI registrieren</a> | <a href="https://console.anthropic.com/" target="_blank" class="text-blue-600">Anthropic registrieren</a></p>
-                    </div>
-                </div>
-                
-                <!-- Report Type Selection -->
-                <div class="flex gap-4 mb-4">
-                    <button id="consultationBtn" onclick="setReportType('consultation')" class="px-6 py-3 rounded-lg font-medium transition-colors bg-blue-600 text-white">
-                        Sprechstundenbericht
-                    </button>
-                    <button id="surgeryBtn" onclick="setReportType('surgery')" class="px-6 py-3 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">
-                        Operationsbericht
-                    </button>
-                </div>
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-900 mb-2">🎤 Medizinische Diktier-App</h1>
+            <p class="text-gray-600">Sprechen → Transkription → KI-Verbesserung</p>
+        </header>
 
-                <!-- Patient Info -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Patient/Referenz (optional)
+        <!-- API Configuration -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                🔑 API-Konfiguration
+            </h2>
+            
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        OpenAI API Key (Whisper)
                     </label>
-                    <input type="text" id="patientInfo" placeholder="z.B. Patient ID, Name oder Referenz..." class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <input type="password" id="openaiKey" placeholder="sk-..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                           oninput="updateKeyStatus()">
                 </div>
-
-                <!-- Recording Control -->
-                <div class="text-center mb-6">
-                    <button id="recordBtn" onclick="toggleRecording()" class="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors">
-                        🎤 KI-Diktat starten
-                    </button>
-                </div>
-
-                <!-- Processing Status -->
-                <div id="processingStatus" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                        <div>
-                            <div id="statusText" class="font-medium text-blue-800">Verarbeitung läuft...</div>
-                            <div id="statusDetail" class="text-sm text-blue-600">Bereite vor...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex gap-3 flex-wrap" id="actionButtons">
-                    <button onclick="saveReport()" class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                        💾 Bericht speichern
-                    </button>
-                    <button onclick="toggleLibrary()" class="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                        📚 Bibliothek (<span id="reportCount">0</span>)
-                    </button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Anthropic API Key (Claude)
+                    </label>
+                    <input type="password" id="anthropicKey" placeholder="sk-ant-..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                           oninput="updateKeyStatus()">
                 </div>
             </div>
-
-            <!-- Results Section -->
-            <div id="resultsSection" class="hidden">
-                <!-- Raw Transcript -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        <span class="text-blue-600">🎤</span>
-                        Whisper Transkript
-                    </h3>
-                    <div class="bg-gray-50 p-4 rounded-lg border max-h-48 overflow-y-auto">
-                        <div id="rawTranscript" class="text-gray-800 text-sm"></div>
-                    </div>
-                </div>
-
-                <!-- Enhanced Report -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                            <span class="text-purple-600">🤖</span>
-                            Claude Strukturierung
-                        </h3>
-                        <button onclick="copyToClipboard()" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">
-                            📋 Kopieren
-                        </button>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg border max-h-96 overflow-y-auto">
-                        <pre id="enhancedReport" class="text-gray-800 text-sm whitespace-pre-wrap"></pre>
-                    </div>
-                </div>
+            
+            <div class="flex gap-2 mb-4">
+                <button onclick="saveKeysToMemory()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                    💾 Keys speichern (Sitzung)
+                </button>
+                <button onclick="testConnection()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">
+                    🔌 Verbindung testen
+                </button>
+                <button onclick="debugSystem()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm">
+                    🛠️ System prüfen
+                </button>
             </div>
+            
+            <div id="keyStatus" class="text-sm"></div>
+        </div>
 
-            <!-- Saved Reports Library -->
-            <div id="librarySection" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-semibold text-gray-800">📚 Gespeicherte Berichte</h3>
-                    <button onclick="toggleLibrary()" class="text-gray-500 hover:text-gray-700">✕</button>
-                </div>
-                <div id="savedReportsList" class="space-y-3">
-                    <div class="text-gray-500 text-center py-8">
-                        Noch keine Berichte gespeichert.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Instructions -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 class="font-semibold text-blue-800 mb-2">📋 Anweisungen:</h4>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <h5 class="font-medium text-blue-800 mb-1">Setup:</h5>
-                        <ul class="text-blue-700 text-sm space-y-1">
-                            <li>• <a href="https://platform.openai.com/api-keys" target="_blank" class="underline">OpenAI API Key</a> erstellen</li>
-                            <li>• <a href="https://console.anthropic.com/" target="_blank" class="underline">Anthropic API Key</a> erstellen</li>
-                            <li>• API-Schlüssel oben eingeben</li>
-                            <li>• Mikrofon-Berechtigung erteilen</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h5 class="font-medium text-blue-800 mb-1">Verwendung:</h5>
-                        <ul class="text-blue-700 text-sm space-y-1">
-                            <li>• Berichtstyp wählen</li>
-                            <li>• "KI-Diktat starten" klicken</li>
-                            <li>• Natürlich sprechen</li>
-                            <li>• Whisper + Claude verarbeiten automatisch</li>
-                            <li>• Fertigen Bericht speichern oder kopieren</li>
-                        </ul>
-                    </div>
-                </div>
+        <!-- Recording Section -->
+        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
+            <h2 class="text-2xl font-semibold mb-6">🎙️ Diktat aufnehmen</h2>
+            
+            <button id="recordBtn" onclick="toggleRecording()" 
+                    class="bg-blue-800 hover:bg-blue-900 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors mb-4">
+                🎤 Diktat starten
+            </button>
+            
+            <div id="recordingStatus" class="text-gray-600 mb-4"></div>
+            
+            <!-- Test Buttons -->
+            <div class="flex gap-2 justify-center mb-4">
+                <button onclick="testMicrophone()" class="bg-purple-600 text-white px-3 py-1 rounded text-sm">
+                    🎤 Mikrofon testen
+                </button>
+                <button onclick="testDemo()" class="bg-orange-600 text-white px-3 py-1 rounded text-sm">
+                    🧪 Demo-Modus
+                </button>
             </div>
         </div>
+
+        <!-- Results -->
+        <div id="resultsSection" class="bg-white rounded-lg shadow-lg p-6 mt-6 hidden">
+            <h3 class="text-xl font-semibold mb-4">📝 Ergebnisse</h3>
+            <div id="results"></div>
+        </div>
+
     </div>
-</div>
 
-<script>
-    // Global state
-    let currentReportType = 'consultation';
-    let isRecording = false;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let savedReports = JSON.parse(localStorage.getItem('savedReports') || '[]');
-    let currentTranscript = '';
-    let currentEnhancedReport = '';
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-        updateReportCount();
-        loadSavedKeys();
-    });
-
-    function loadSavedKeys() {
-        const openaiKey = localStorage.getItem('openaiKey');
-        const anthropicKey = localStorage.getItem('anthropicKey');
-        if (openaiKey) document.getElementById('openaiKey').value = openaiKey;
-        if (anthropicKey) document.getElementById('anthropicKey').value = anthropicKey;
-    }
-
-    function saveKeys() {
-        const openaiKey = document.getElementById('openaiKey').value;
-        const anthropicKey = document.getElementById('anthropicKey').value;
-        
-        if (openaiKey) localStorage.setItem('openaiKey', openaiKey);
-        if (anthropicKey) localStorage.setItem('anthropicKey', anthropicKey);
-        
-        // Visual feedback
-        const status = document.getElementById('keyStatus');
-        status.innerHTML = '✅ <span class="text-green-600 ml-1">Keys gespeichert!</span>';
-        setTimeout(() => status.innerHTML = '', 3000);
-    }
-
-    async function testKeys() {
-        const openaiKey = document.getElementById('openaiKey').value;
-        const anthropicKey = document.getElementById('anthropicKey').value;
-        const status = document.getElementById('keyStatus');
-        
-        if (!openaiKey || !anthropicKey) {
-            status.innerHTML = '❌ <span class="text-red-600 ml-1">Beide Keys eingeben!</span>';
-            return;
-        }
-        
-        status.innerHTML = '🔄 <span class="text-blue-600 ml-1">Teste Keys...</span>';
-        
-        // Test OpenAI Key
-        try {
-            const openaiTest = await fetch('https://api.openai.com/v1/models', {
-                headers: { 'Authorization': `Bearer ${openaiKey}` }
-            });
-            
-            if (!openaiTest.ok) {
-                status.innerHTML = '❌ <span class="text-red-600 ml-1">OpenAI Key ungültig!</span>';
-                return;
-            }
-        } catch (error) {
-            status.innerHTML = '❌ <span class="text-red-600 ml-1">OpenAI Test fehlgeschlagen!</span>';
-            return;
-        }
-        
-        // Test Anthropic Key  
-        try {
-            const anthropicTest = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${anthropicKey}`,
-                    'Content-Type': 'application/json',
-                    'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                    model: 'claude-3-sonnet-20240229',
-                    max_tokens: 10,
-                    messages: [{ role: 'user', content: 'test' }]
-                })
-            });
-            
-            if (!anthropicTest.ok) {
-                status.innerHTML = '❌ <span class="text-red-600 ml-1">Anthropic Key ungültig!</span>';
-                return;
-            }
-        } catch (error) {
-            status.innerHTML = '❌ <span class="text-red-600 ml-1">Anthropic Test fehlgeschlagen!</span>';
-            return;
-        }
-        
-        status.innerHTML = '✅ <span class="text-green-600 ml-1">Beide Keys funktionieren!</span>';
-        saveKeys();
-    }
-
-    function setReportType(type) {
-        currentReportType = type;
-        document.getElementById('consultationBtn').className = type === 'consultation' ? 
-            'px-6 py-3 rounded-lg font-medium transition-colors bg-blue-600 text-white' :
-            'px-6 py-3 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300';
-        document.getElementById('surgeryBtn').className = type === 'surgery' ? 
-            'px-6 py-3 rounded-lg font-medium transition-colors bg-green-600 text-white' :
-            'px-6 py-3 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300';
-    }
-
-    async function toggleRecording() {
-        if (!isRecording) {
-            await startRecording();
-        } else {
-            stopRecording();
-        }
-    }
-
-    async function startRecording() {
-        // Check if keys are saved
-        const openaiKey = document.getElementById('openaiKey').value || localStorage.getItem('openaiKey');
-        const anthropicKey = document.getElementById('anthropicKey').value || localStorage.getItem('anthropicKey');
-        
-        if (!openaiKey || !anthropicKey) {
-            alert('⚠️ Bitte erst beide API-Schlüssel eingeben und speichern!');
-            return;
-        }
-        
-        try {
-            showProcessingStatus('Mikrofon-Zugriff anfordern...', 'Bitte "Erlauben" wählen wenn Safari fragt.');
-            
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    sampleRate: 44100
-                }
-            });
-            
-            hideProcessingStatus();
-            
-            mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
-            audioChunks = [];
-            
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                stream.getTracks().forEach(track => track.stop());
-                await processAudio(audioBlob);
-            };
-            
-            mediaRecorder.start();
-            isRecording = true;
-            document.getElementById('recordBtn').innerHTML = '🛑 Aufnahme beenden';
-            document.getElementById('recordBtn').className = 'bg-red-800 hover:bg-red-900 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors animate-pulse';
-            
-            // Show recording status
-            showProcessingStatus('🎤 Aufnahme läuft...', 'Sprechen Sie jetzt deutlich ins Mikrofon.');
-            
-        } catch (error) {
-            hideProcessingStatus();
-            console.error('Recording error:', error);
-            
-            let errorMessage = 'Mikrofon-Fehler: ';
-            if (error.name === 'NotAllowedError') {
-                errorMessage += 'Zugriff verweigert. Bitte in Safari-Einstellungen Mikrofon für diese Website erlauben.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage += 'Kein Mikrofon gefunden. Prüfen Sie die Geräte-Einstellungen.';
-            } else {
-                errorMessage += error.message || 'Unbekannter Fehler.';
-            }
-            
-            alert(errorMessage + '\n\n💡 Tipp: Versuchen Sie die Seite neu zu laden und "Erlauben" zu wählen.');
-        }
-    }
-
-    function stopRecording() {
-        if (mediaRecorder && isRecording) {
-            mediaRecorder.stop();
-            isRecording = false;
-            document.getElementById('recordBtn').innerHTML = '🎤 KI-Diktat starten';
-            document.getElementById('recordBtn').className = 'bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors';
-        }
-    }
-
-    async function processAudio(audioBlob) {
-        saveKeys();
-        const openaiKey = document.getElementById('openaiKey').value;
-        const anthropicKey = document.getElementById('anthropicKey').value;
-        
-        if (!openaiKey || !anthropicKey) {
-            alert('Bitte geben Sie beide API-Schlüssel ein.');
-            return;
-        }
-
-        showProcessingStatus('Whisper transkribiert...', 'Audio wird zu Text konvertiert...');
-        
-        try {
-            // Step 1: Whisper transcription
-            const transcript = await transcribeWithWhisper(audioBlob, openaiKey);
-            currentTranscript = transcript;
-            document.getElementById('rawTranscript').textContent = transcript;
-            
-            showProcessingStatus('Claude strukturiert...', 'Medizinische Nachbearbeitung läuft...');
-            
-            // Step 2: Claude enhancement
-            const enhancedReport = await enhanceWithClaude(transcript, anthropicKey);
-            currentEnhancedReport = enhancedReport;
-            document.getElementById('enhancedReport').textContent = enhancedReport;
-            
-            // Show results
-            document.getElementById('resultsSection').classList.remove('hidden');
-            hideProcessingStatus();
-            
-        } catch (error) {
-            console.error('Processing error:', error);
-            alert('Fehler bei der Verarbeitung: ' + error.message);
-            hideProcessingStatus();
-        }
-    }
-
-    async function transcribeWithWhisper(audioBlob, apiKey) {
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.wav');
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'de');
-
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`Whisper API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.text;
-    }
-
-    async function enhanceWithClaude(transcript, apiKey) {
-        const reportTypeText = currentReportType === 'consultation' ? 'Sprechstundenbericht' : 'Operationsbericht';
-        const sections = currentReportType === 'consultation' ? 
-            'Diagnosen, Anamnese/Zwischenanamnese, Befunde, Röntgenbefund, Beurteilung, Prozedere' :
-            'Diagnosen, Operation(en), Indikation, Verlauf, Prozedere';
-
-        const prompt = `Du bist ein Experte für orthopädische Dokumentation. 
-```
-
-Korrigiere und strukturiere folgenden Diktat-Text zu einem professionellen ${reportTypeText}:
-
-ROHTEXT: “${transcript}”
-
-AUFGABEN:
-
-1. Korrigiere medizinische Fachbegriffe und Grammatik
-1. Strukturiere den Text in folgende Abschnitte: ${sections}
-1. Formatiere als professionellen medizinischen Bericht
-1. Verwende klare Überschriften in GROSSBUCHSTABEN
-1. Prozedere als Aufzählung mit Bullet Points
-
-Antworte NUR mit dem strukturierten Bericht:`;
-
-```
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-                model: 'claude-3-sonnet-20240229',
-                max_tokens: 1000,
-                messages: [
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ]
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Claude API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.content[0].text;
-    }
-
-    function showProcessingStatus(title, detail) {
-        document.getElementById('statusText').textContent = title;
-        document.getElementById('statusDetail').textContent = detail;
-        document.getElementById('processingStatus').classList.remove('hidden');
-    }
-
-    function hideProcessingStatus() {
-        document.getElementById('processingStatus').classList.add('hidden');
-    }
-
-    function copyToClipboard() {
-        if (currentEnhancedReport) {
-            navigator.clipboard.writeText(currentEnhancedReport).then(() => {
-                alert('Bericht in Zwischenablage kopiert!');
-            }).catch(() => {
-                alert('Kopieren fehlgeschlagen.');
-            });
-        }
-    }
-
-    function saveReport() {
-        if (!currentEnhancedReport) {
-            alert('Kein Bericht zum Speichern vorhanden.');
-            return;
-        }
-
-        const patientInfo = document.getElementById('patientInfo').value || 'Unbekannt';
-        const report = {
-            id: Date.now(),
-            type: currentReportType,
-            typeName: currentReportType === 'consultation' ? 'Sprechstundenbericht' : 'Operationsbericht',
-            patientInfo: patientInfo,
-            content: currentEnhancedReport,
-            transcript: currentTranscript,
-            timestamp: new Date().toLocaleString('de-DE'),
-            date: new Date().toLocaleDateString('de-DE')
+    <script>
+        // Global variables - stored in memory only
+        let currentKeys = {
+            openai: '',
+            anthropic: ''
         };
-
-        savedReports.unshift(report);
-        localStorage.setItem('savedReports', JSON.stringify(savedReports));
-        updateReportCount();
-        alert('Bericht gespeichert!');
-    }
-
-    function toggleLibrary() {
-        const library = document.getElementById('librarySection');
-        if (library.classList.contains('hidden')) {
-            showLibrary();
-        } else {
-            library.classList.add('hidden');
-        }
-    }
-
-    function showLibrary() {
-        const library = document.getElementById('librarySection');
-        const list = document.getElementById('savedReportsList');
         
-        if (savedReports.length === 0) {
-            list.innerHTML = '<div class="text-gray-500 text-center py-8">Noch keine Berichte gespeichert.</div>';
-        } else {
-            list.innerHTML = savedReports.map(report => `
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-start justify-between mb-2">
-                        <span class="px-2 py-1 rounded text-xs font-medium ${
-                            report.type === 'consultation' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                        }">${report.typeName}</span>
-                        <span class="text-xs text-gray-500">${report.date}</span>
-                    </div>
-                    <div class="text-sm text-gray-700 mb-2"><strong>Patient:</strong> ${report.patientInfo}</div>
-                    <div class="text-xs text-gray-600 bg-gray-50 p-2 rounded mb-3 max-h-16 overflow-hidden">
-                        ${report.content.substring(0, 150)}...
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="copyReportToClipboard('${report.id}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
-                            📋 Kopieren
-                        </button>
-                        <button onclick="deleteReport('${report.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-                            🗑️ Löschen
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        // Debug functions
+        function debugSystem() {
+            const info = {
+                userAgent: navigator.userAgent,
+                mediaDevices: !!navigator.mediaDevices,
+                getUserMedia: !!navigator.mediaDevices?.getUserMedia,
+                localStorage: testLocalStorage(),
+                https: location.protocol === 'https:',
+                permissions: 'checking...'
+            };
+            
+            document.getElementById('debugInfo').innerHTML = 
+                `🔍 System-Check:<br>
+                📱 Browser: ${info.userAgent.includes('Safari') ? 'Safari' : 'Andere'}<br>
+                🎤 MediaDevices: ${info.mediaDevices ? '✅' : '❌'}<br>
+                🎙️ getUserMedia: ${info.getUserMedia ? '✅' : '❌'}<br>
+                💾 LocalStorage: ${info.localStorage ? '✅' : '❌'}<br>
+                🔒 HTTPS: ${info.https ? '✅' : '❌'}<br>
+                Keys gespeichert: ${currentKeys.openai ? '✅ OpenAI' : '❌'} ${currentKeys.anthropic ? '✅ Anthropic' : '❌'}`;
         }
-        
-        library.classList.remove('hidden');
-    }
 
-    function copyReportToClipboard(reportId) {
-        const report = savedReports.find(r => r.id == reportId);
-        if (report) {
-            navigator.clipboard.writeText(report.content).then(() => {
-                alert('Bericht kopiert!');
-            });
+        function testLocalStorage() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                return true;
+            } catch (e) {
+                return false;
+            }
         }
-    }
 
-    function deleteReport(reportId) {
-        if (confirm('Bericht wirklich löschen?')) {
-            savedReports = savedReports.filter(r => r.id != reportId);
-            localStorage.setItem('savedReports', JSON.stringify(savedReports));
-            updateReportCount();
-            showLibrary();
+        function updateKeyStatus() {
+            const openai = document.getElementById('openaiKey').value;
+            const anthropic = document.getElementById('anthropicKey').value;
+            
+            let status = '';
+            if (openai && openai.startsWith('sk-')) status += '✅ OpenAI Key OK ';
+            else if (openai) status += '❌ OpenAI Key ungültig ';
+            
+            if (anthropic && anthropic.startsWith('sk-ant-')) status += '✅ Anthropic Key OK';
+            else if (anthropic) status += '❌ Anthropic Key ungültig';
+            
+            document.getElementById('keyStatus').innerHTML = status;
         }
-    }
 
-    function updateReportCount() {
-        document.getElementById('reportCount').textContent = savedReports.length;
-    }
-</script>
-```
+        function saveKeysToMemory() {
+            currentKeys.openai = document.getElementById('openaiKey').value;
+            currentKeys.anthropic = document.getElementById('anthropicKey').value;
+            
+            if (currentKeys.openai && currentKeys.anthropic) {
+                showMessage('✅ Keys in Sitzung gespeichert!', 'success');
+                debugSystem();
+            } else {
+                showMessage('❌ Bitte beide Keys eingeben!', 'error');
+            }
+        }
 
+        async function testConnection() {
+            if (!currentKeys.openai || !currentKeys.anthropic) {
+                showMessage('❌ Erst Keys speichern!', 'error');
+                return;
+            }
+            
+            showMessage('🔄 Teste Verbindungen...', 'info');
+            
+            try {
+                // Test OpenAI
+                const openaiResponse = await fetch('https://api.openai.com/v1/models', {
+                    headers: {
+                        'Authorization': `Bearer ${currentKeys.openai}`
+                    }
+                });
+                
+                if (!openaiResponse.ok) {
+                    showMessage('❌ OpenAI Key funktioniert nicht!', 'error');
+                    return;
+                }
+                
+                showMessage('✅ Beide Keys funktionieren!', 'success');
+                
+            } catch (error) {
+                showMessage(`❌ Verbindungstest fehlgeschlagen: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMicrophone() {
+            try {
+                showMessage('🎤 Teste Mikrofon-Zugriff...', 'info');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: true 
+                });
+                
+                showMessage('✅ Mikrofon funktioniert!', 'success');
+                
+                // Stream wieder stoppen
+                stream.getTracks().forEach(track => track.stop());
+                
+            } catch (error) {
+                let errorMsg = '❌ Mikrofon-Fehler: ';
+                if (error.name === 'NotAllowedError') {
+                    errorMsg += 'Berechtigung verweigert. Bitte in Safari-Einstellungen erlauben.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg += 'Kein Mikrofon gefunden.';
+                } else {
+                    errorMsg += error.message;
+                }
+                showMessage(errorMsg, 'error');
+            }
+        }
+
+        function testDemo() {
+            showMessage('🧪 Demo-Modus läuft...', 'info');
+            
+            setTimeout(() => {
+                const demoText = `Liebe Kollegin, lieber Kollege,
+
+Patient Max Mustermann, geb. 15.03.1980, stellte sich heute in unserer Praxis vor.
+
+Anamnese:
+Der Patient klagt über seit 3 Tagen bestehende Kopfschmerzen und leichte Übelkeit. Keine Vorerkrankungen bekannt.
+
+Befund:
+- RR 120/80 mmHg
+- Puls 72/min
+- Temperatur 36.8°C
+- Neurologisch unauffällig
+
+Diagnose:
+Spannungskopfschmerz (G44.2)
+
+Therapie:
+- Ibuprofen 400mg bei Bedarf
+- Kontrolle in 1 Woche
+
+Mit freundlichen Grüßen
+Dr. med. Schmidt`;
+
+                document.getElementById('resultsSection').classList.remove('hidden');
+                document.getElementById('results').innerHTML = 
+                    `<div class="bg-green-50 border border-green-200 p-4 rounded">
+                        <h4 class="font-semibold text-green-800 mb-2">📄 Demo-Bericht erstellt:</h4>
+                        <div class="text-sm whitespace-pre-line">${demoText}</div>
+                    </div>`;
+                
+                showMessage('✅ Demo erfolgreich!', 'success');
+            }, 2000);
+        }
+
+        async function toggleRecording() {
+            if (!currentKeys.openai || !currentKeys.anthropic) {
+                showMessage('❌ Bitte erst beide API-Keys eingeben und speichern!', 'error');
+                return;
+            }
+            
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                showMessage('🎤 Mikrofon-Zugriff wird angefordert...', 'info');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                });
+                
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    stream.getTracks().forEach(track => track.stop());
+                    await processAudio(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordBtn').innerHTML = '🛑 Aufnahme beenden';
+                document.getElementById('recordBtn').className = 'bg-red-800 hover:bg-red-900 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors animate-pulse';
+                
+                showMessage('🎤 Aufnahme läuft - sprechen Sie jetzt!', 'success');
+                
+            } catch (error) {
+                console.error('Recording error:', error);
+                showMessage(`❌ Aufnahme-Fehler: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                document.getElementById('recordBtn').innerHTML = '🎤 Diktat starten';
+                document.getElementById('recordBtn').className = 'bg-blue-800 hover:bg-blue-900 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors';
+                
+                showMessage('🔄 Verarbeitung läuft...', 'info');
+            }
+        }
+
+        async function processAudio(audioBlob) {
+            try {
+                // Whisper API Call
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'audio.wav');
+                formData.append('model', 'whisper-1');
+                formData.append('language', 'de');
+                
+                const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentKeys.openai}`
+                    },
+                    body: formData
+                });
+                
+                if (!transcriptionResponse.ok) {
+                    throw new Error('Whisper API Fehler');
+                }
+                
+                const transcriptionData = await transcriptionResponse.json();
+                const transcription = transcriptionData.text;
+                
+                showMessage('✅ Transkription erfolgreich - KI-Verbesserung läuft...', 'info');
+                
+                // Claude API Call
+                const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentKeys.anthropic}`,
+                        'Content-Type': 'application/json',
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-3-sonnet-20240229',
+                        max_tokens: 2000,
+                        messages: [{
+                            role: 'user',
+                            content: `Bitte verbessere diesen medizinischen Diktattext zu einem professionellen Arztbericht. Korrigiere Grammatik, strukturiere den Text und füge medizinische Fachterminologie hinzu wo angebracht:
+
+"${transcription}"`
+                        }]
+                    })
+                });
+                
+                if (!claudeResponse.ok) {
+                    throw new Error('Claude API Fehler');
+                }
+                
+                const claudeData = await claudeResponse.json();
+                const improvedText = claudeData.content[0].text;
+                
+                // Results anzeigen
+                document.getElementById('resultsSection').classList.remove('hidden');
+                document.getElementById('results').innerHTML = 
+                    `<div class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded">
+                            <h4 class="font-semibold text-blue-800 mb-2">🎤 Original-Transkription:</h4>
+                            <div class="text-sm">${transcription}</div>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 p-4 rounded">
+                            <h4 class="font-semibold text-green-800 mb-2">📄 KI-verbesserter Bericht:</h4>
+                            <div class="text-sm whitespace-pre-line">${improvedText}</div>
+                        </div>
+                    </div>`;
+                
+                showMessage('✅ Diktat erfolgreich verarbeitet!', 'success');
+                
+            } catch (error) {
+                console.error('Processing error:', error);
+                showMessage(`❌ Verarbeitung fehlgeschlagen: ${error.message}`, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const statusDiv = document.getElementById('keyStatus');
+            let className = 'debug-info ';
+            
+            if (type === 'error') className += 'error-msg';
+            else if (type === 'success') className += 'success-msg';
+            
+            statusDiv.className = className;
+            statusDiv.innerHTML = message;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                    statusDiv.className = '';
+                }, 5000);
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            debugSystem();
+            updateKeyStatus();
+        };
+    </script>
 </body>
 </html>
