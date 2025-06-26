@@ -29,14 +29,23 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 OpenAI API Key (Whisper)
                             </label>
-                            <input type="password" id="openaiKey" placeholder="sk-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                            <input type="password" id="openaiKey" placeholder="sk-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm" onchange="saveKeys()">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Anthropic API Key (Claude)
                             </label>
-                            <input type="password" id="anthropicKey" placeholder="sk-ant-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                            <input type="password" id="anthropicKey" placeholder="sk-ant-..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm" onchange="saveKeys()">
                         </div>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="saveKeys()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                            💾 API-Keys speichern
+                        </button>
+                        <button onclick="testKeys()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">
+                            🧪 Keys testen
+                        </button>
+                        <span id="keyStatus" class="flex items-center text-sm"></span>
                     </div>
                     <div class="text-xs text-gray-600 mt-2">
                         <p><strong>Kosten:</strong> ~$0.01 pro Bericht | <strong>Sicherheit:</strong> Keys werden nur lokal gespeichert</p>
@@ -189,8 +198,70 @@
     function saveKeys() {
         const openaiKey = document.getElementById('openaiKey').value;
         const anthropicKey = document.getElementById('anthropicKey').value;
+        
         if (openaiKey) localStorage.setItem('openaiKey', openaiKey);
         if (anthropicKey) localStorage.setItem('anthropicKey', anthropicKey);
+        
+        // Visual feedback
+        const status = document.getElementById('keyStatus');
+        status.innerHTML = '✅ <span class="text-green-600 ml-1">Keys gespeichert!</span>';
+        setTimeout(() => status.innerHTML = '', 3000);
+    }
+
+    async function testKeys() {
+        const openaiKey = document.getElementById('openaiKey').value;
+        const anthropicKey = document.getElementById('anthropicKey').value;
+        const status = document.getElementById('keyStatus');
+        
+        if (!openaiKey || !anthropicKey) {
+            status.innerHTML = '❌ <span class="text-red-600 ml-1">Beide Keys eingeben!</span>';
+            return;
+        }
+        
+        status.innerHTML = '🔄 <span class="text-blue-600 ml-1">Teste Keys...</span>';
+        
+        // Test OpenAI Key
+        try {
+            const openaiTest = await fetch('https://api.openai.com/v1/models', {
+                headers: { 'Authorization': `Bearer ${openaiKey}` }
+            });
+            
+            if (!openaiTest.ok) {
+                status.innerHTML = '❌ <span class="text-red-600 ml-1">OpenAI Key ungültig!</span>';
+                return;
+            }
+        } catch (error) {
+            status.innerHTML = '❌ <span class="text-red-600 ml-1">OpenAI Test fehlgeschlagen!</span>';
+            return;
+        }
+        
+        // Test Anthropic Key  
+        try {
+            const anthropicTest = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${anthropicKey}`,
+                    'Content-Type': 'application/json',
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-sonnet-20240229',
+                    max_tokens: 10,
+                    messages: [{ role: 'user', content: 'test' }]
+                })
+            });
+            
+            if (!anthropicTest.ok) {
+                status.innerHTML = '❌ <span class="text-red-600 ml-1">Anthropic Key ungültig!</span>';
+                return;
+            }
+        } catch (error) {
+            status.innerHTML = '❌ <span class="text-red-600 ml-1">Anthropic Test fehlgeschlagen!</span>';
+            return;
+        }
+        
+        status.innerHTML = '✅ <span class="text-green-600 ml-1">Beide Keys funktionieren!</span>';
+        saveKeys();
     }
 
     function setReportType(type) {
@@ -212,9 +283,31 @@
     }
 
     async function startRecording() {
+        // Check if keys are saved
+        const openaiKey = document.getElementById('openaiKey').value || localStorage.getItem('openaiKey');
+        const anthropicKey = document.getElementById('anthropicKey').value || localStorage.getItem('anthropicKey');
+        
+        if (!openaiKey || !anthropicKey) {
+            alert('⚠️ Bitte erst beide API-Schlüssel eingeben und speichern!');
+            return;
+        }
+        
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            showProcessingStatus('Mikrofon-Zugriff anfordern...', 'Bitte "Erlauben" wählen wenn Safari fragt.');
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+            
+            hideProcessingStatus();
+            
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
             audioChunks = [];
             
             mediaRecorder.ondataavailable = (event) => {
@@ -229,10 +322,26 @@
             
             mediaRecorder.start();
             isRecording = true;
-            document.getElementById('recordBtn').innerHTML = '🎤 Aufnahme beenden';
+            document.getElementById('recordBtn').innerHTML = '🛑 Aufnahme beenden';
             document.getElementById('recordBtn').className = 'bg-red-800 hover:bg-red-900 text-white px-8 py-4 rounded-full text-xl font-bold transition-colors animate-pulse';
+            
+            // Show recording status
+            showProcessingStatus('🎤 Aufnahme läuft...', 'Sprechen Sie jetzt deutlich ins Mikrofon.');
+            
         } catch (error) {
-            alert('Mikrofon-Zugriff verweigert. Bitte erlauben Sie die Berechtigung.');
+            hideProcessingStatus();
+            console.error('Recording error:', error);
+            
+            let errorMessage = 'Mikrofon-Fehler: ';
+            if (error.name === 'NotAllowedError') {
+                errorMessage += 'Zugriff verweigert. Bitte in Safari-Einstellungen Mikrofon für diese Website erlauben.';
+            } else if (error.name === 'NotFoundError') {
+                errorMessage += 'Kein Mikrofon gefunden. Prüfen Sie die Geräte-Einstellungen.';
+            } else {
+                errorMessage += error.message || 'Unbekannter Fehler.';
+            }
+            
+            alert(errorMessage + '\n\n💡 Tipp: Versuchen Sie die Seite neu zu laden und "Erlauben" zu wählen.');
         }
     }
 
